@@ -93,20 +93,12 @@ task automatic feed_image_and_close(input int input_image_fp);
             idata  <= '0;
         end
     end
-    for(int ii=0; ii<10; ii++) begin
-        @(posedge clk) begin
-            rst <= 1'b0;
-            inew   <= 1'b0;
-            ivalid <= 1'b0;
-            idata  <= '0;
-        end
-    end
     while(!$feof(input_image_fp)) begin
         @(posedge clk) begin
             automatic int rbyte;
             rbyte = $fgetc(input_image_fp);
             if($feof(input_image_fp)) begin
-                inew   <= 1'b0;
+                inew   <= 1'b1;
                 ivalid <= 1'b0;
                 idata  <= '0;
             end else begin
@@ -115,11 +107,11 @@ task automatic feed_image_and_close(input int input_image_fp);
                 idata  <= rbyte;
             end
         end
-        @(posedge clk) begin
-            inew   <= 1'b0;
-            ivalid <= 1'b0;
-            idata  <= '0;
-        end
+        //@(posedge clk) begin
+        //    inew   <= 1'b0;
+        //    ivalid <= 1'b0;
+        //    idata  <= '0;
+        //end
     end
     fclose_safe(fpin);
 endtask
