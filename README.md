@@ -21,7 +21,7 @@ JPEG-LS image encoder for FPGAs
 
 # 使用方法
 
-[**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/RTL/jls_encoder.sv) 中的 **jls_encoder** 是顶层模块，它的接口描述如下表。
+[**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/jls_encoder.sv) 中的 **jls_encoder** 是顶层模块，它的接口描述如下表。
 
 | 信号名称 | 全称 | 方向 | 宽度 | 描述 |
 | :---: | :---: | :---: | :---: | :--- |
@@ -58,10 +58,10 @@ ivalid和idata可以断断续续的有效，或者连续的有效，这意味着
 
 # 仿真
 
-* [**images**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/images) 是仿真的输入目录，该目录中提供了16个输入图片实例（为PGM格式，可以使用photoshop查看）。
-* [**result**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/images) 是仿真的输出目录，该目录用于存放输出的**.jls**图片。
-* 请修改仿真的顶层文件 [**tb.sv**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/RTL/tb.sv) 。将第5行修改为你的计算机上的输入目录，将第6行修改为你的计算机上的输出目录。
-* 使用 [**tb.sv**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/RTL/tb.sv) 和 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/RTL/jls_encoder.sv) 进行仿真。该仿真会自动读取 [**images**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/images) 目录中的图片，使用 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/RTL/jls_encoder.sv) 压缩后产生多个**.jls**图片的内容，并依次输出到 [**result**](https://github.com/WangXuan95/Hard-JPEG_LS/blob/master/images) 目录中。
+* [**images**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 是仿真的输入目录，该目录中提供了16个输入图片实例（为PGM格式，可以使用photoshop查看）。
+* [**result**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 是仿真的输出目录，该目录用于存放输出的**.jls**图片。
+* 请修改仿真的顶层文件 [**tb.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/tb.sv) 。将第5行修改为你的计算机上的输入目录，将第6行修改为你的计算机上的输出目录。
+* 使用 [**tb.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/tb.sv) 和 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/jls_encoder.sv) 进行仿真。该仿真会自动读取 [**images**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 目录中的图片，使用 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/jls_encoder.sv) 压缩后产生多个**.jls**图片的内容，并依次输出到 [**result**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 目录中。
 * 你可以使用[**该网站**](https://filext.com/file-extension/JLS)查看压缩后的图片。
 
 
