@@ -12,12 +12,12 @@ JPEG-LS image encoder for FPGAs
 
 * 使用**JPEG-LS**近无损模式，**NEAR=2**，对于照片一般有**6倍**的压缩率。
 * 仅支持**8bit**深度的灰度图片。
-* 宽度取值范围为**[4,4095]**，高度取值范围为**[1,65535]**。
+* 宽度取值范围为[4,4095]，高度取值范围为[1,65535]。
 * 完全使用**SystemVerilog**实现，便于移植和仿真。
 
 # 背景知识
 
-**JPEG-LS** 是一种近无损的图像压缩算法，在损失值NEAR=2时，可以保证压缩后的像素误差<=2，并对照片获得约6倍的压缩率。使用**JPEG-LS**压缩的图像在添加文件头后往往存储在**.jls**文件中。
+**JPEG-LS** 是一种近无损的图像压缩算法，在损失值**NEAR=2**时，可以保证压缩后的像素误差<=2，并对照片获得约6倍的压缩率。使用**JPEG-LS**压缩的图像在添加文件头后往往存储在.jls文件中。
 
 # 使用方法
 
@@ -49,7 +49,7 @@ ivalid和idata可以断断续续的有效，或者连续的有效，这意味着
 | :----: |
 | **图1** : **jls_encoder** 输入波形图（最高的压缩性能） |
 
-输出的波形图如**图2**。输入图片的同时，**jls_encoder**会输出压缩好的**JPEG-LS流**，该流构成了完整的**.jls**文件的内容（包括文件头部）。ovalid=1时，odata是一个有效输出字节。在每个图片的最后一个字节，olast=1以指示一个图片结束，如果oerror=1，说明输入的图片不完整，产生了一个错误。注意：出现错误后不需要采取任何复位措施。
+输出的波形图如**图2**。输入图片的同时，**jls_encoder**会输出压缩好的**JPEG-LS流**，该流构成了完整的.jls文件的内容（包括文件头部）。ovalid=1时，odata是一个有效输出字节。在每个图片的最后一个字节，olast=1以指示一个图片结束，如果oerror=1，说明输入的图片不完整，产生了一个错误。注意：出现错误后不需要采取任何复位措施。
 
 | ![输出图](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/doc/output_wave.png) |
 | :----: |
@@ -59,9 +59,9 @@ ivalid和idata可以断断续续的有效，或者连续的有效，这意味着
 # 仿真
 
 * [**images**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 是仿真的输入目录，该目录中提供了16个输入图片实例（为PGM格式，可以使用photoshop查看）。
-* [**result**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 是仿真的输出目录，该目录用于存放输出的**.jls**图片。
+* [**result**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 是仿真的输出目录，该目录用于存放输出的.jls图片。
 * 请修改仿真的顶层文件 [**tb.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/tb.sv) 。将第5行修改为你的计算机上的输入目录，将第6行修改为你的计算机上的输出目录。
-* 使用 [**tb.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/tb.sv) 和 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/jls_encoder.sv) 进行仿真。该仿真会自动读取 [**images**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 目录中的图片，使用 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/jls_encoder.sv) 压缩后产生多个**.jls**图片的内容，并依次输出到 [**result**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 目录中。
+* 使用 [**tb.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/tb.sv) 和 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/jls_encoder.sv) 进行仿真。该仿真会自动读取 [**images**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 目录中的图片，使用 [**jls_encoder.sv**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/RTL/jls_encoder.sv) 压缩后产生多个.jls图片的内容，并依次输出到 [**result**](https://github.com/WangXuan95/Hard-JPEG-LS/blob/master/images) 目录中。
 * 你可以使用[**该网站**](https://filext.com/file-extension/JLS)查看压缩后的图片。
 
 
