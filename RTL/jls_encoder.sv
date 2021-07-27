@@ -378,7 +378,7 @@ reg        [8:0] e_q;
 reg              e_rt;
 reg signed [9:0] e_err;
 reg        [6:0] e_No;
-reg              e_write_C, e_write_B;
+reg              e_write_C, e_write_en;
 reg        [5:0] e_Nn;
 reg signed [7:0] e_Cn;
 reg signed [6:0] e_Bn;
@@ -386,8 +386,9 @@ reg signed [6:0] e_Bn;
 always @ (posedge clk) begin
     e_sof <= d_sof & rstn;
     e_2BleN <= 1'b0;
+    {e_write_C, e_Cn, e_write_en, e_Bn, e_Nn} <= '0;
     if(~rstn | d_sof) begin
-        {e_e, e_fc, e_lc, e_eof, e_ii, e_runi, e_rune, e_x, e_q, e_rt, e_err, e_No, e_write_C, e_write_B, e_Nn, e_Cn, e_Bn} <= '0;
+        {e_e, e_fc, e_lc, e_eof, e_ii, e_runi, e_rune, e_x, e_q, e_rt, e_err, e_No} <= '0;
     end else begin
         automatic logic        [7:0] a = d_fc ? d_b : e_x;
         automatic logic              s;
@@ -402,7 +403,6 @@ always @ (posedge clk) begin
         automatic logic signed [9:0] err = '0;
         {s, q} = func_get_q(d_qp1, d_c, a);
         Co = (e_write_C & e_q==q) ? e_Cn : Cram[q];
-        {e_write_C, e_Cn, e_write_B, e_Bn, e_Nn} <= '0;
         runi = ~d_fc & e_runi | (q == 9'd0);
         if(runi) begin
             runi = func_is_near(d_x, a);
@@ -425,12 +425,12 @@ always @ (posedge clk) begin
                 err = func_errval_quantize(err);
                 e_x <= P_LOSSY ? func_clip( px + ( s ? -(P_QUANT*err) : P_QUANT*err ) ) : d_x;
                 err = func_modrange(err);
-                No = ((e_write_B & e_q==q) ? e_Nn : Nram[q]) + 7'd1;
+                No = ((e_write_en & e_q==q) ? e_Nn : Nram[q]) + 7'd1;
                 Nn = No;
                 if(No[6]) Nn >>>= 1;
                 e_Nn <= Nn[5:0];
-                Bo = (e_write_B & e_q==q) ? e_Bn : Bram[q];
-                e_write_B <= 1'b1;
+                Bo = (e_write_en & e_q==q) ? e_Bn : Bram[q];
+                e_write_en <= 1'b1;
                 if(rune) begin
                     e_Bn <= B_update(No[6], Bo, err<$signed(10'd0));
                     e_2BleN <= $signed({Bo,1'b0}) < $signed({1'b0,No});
@@ -459,20 +459,65 @@ end
 //-------------------------------------------------------------------------------------------------------------------
 // pipeline stage f: write Cram, Bram, Nram
 //-------------------------------------------------------------------------------------------------------------------
+reg [8:0] NBC_init_addr;
 always @ (posedge clk)
-    if(~rstn | e_sof) begin
-        Cram <= '{364{'0}};
-        Nram <= '{366{'0}};
-        Bram <= '{366{'0}};
-    end else begin
-        if(e_write_C)
-            Cram[e_q] <= e_Cn;
-        if(e_write_B) begin
-            Nram[e_q] <= e_Nn;
-            Bram[e_q] <= e_Bn;
-        end
+    NBC_init_addr <= e_sof ? NBC_init_addr + (NBC_init_addr < 9'd366 ? 9'd1 : 9'd0) : 9'd0;
+
+always @ (posedge clk)
+    if(e_sof | e_write_en) begin
+        Nram[e_write_en ? e_q : NBC_init_addr] <= e_Nn;
+        Bram[e_write_en ? e_q : NBC_init_addr] <= e_Bn;
     end
-    
+
+always @ (posedge clk)
+    if(e_sof | e_write_C) begin
+        Cram[e_write_C ? e_q : NBC_init_addr] <= e_Cn;
+    end
+
+
+
+
+//-------------------------------------------------------------------------------------------------------------------
+// pipeline stage ef: read Aram, buffer registers
+//-------------------------------------------------------------------------------------------------------------------
+reg              ef_sof;
+reg              ef_e;
+reg              ef_fc;
+reg              ef_lc;
+reg              ef_eof;
+reg              ef_runi;
+reg              ef_rune;
+reg              ef_2BleN;
+reg        [8:0] ef_q;
+reg              ef_rt;
+reg signed [9:0] ef_err;
+reg        [6:0] ef_No;
+reg       [12:0] ef_Ao;
+reg              ef_write_en;
+
+always @ (posedge clk) begin
+    ef_sof <= e_sof & rstn;
+    if(~rstn | e_sof) begin
+        {ef_e, ef_fc, ef_lc, ef_eof, ef_runi, ef_rune, ef_2BleN, ef_q, ef_rt, ef_err, ef_No, ef_write_en} <= '0;
+    end else begin
+        ef_e <= e_e;
+        ef_fc <= e_fc;
+        ef_lc <= e_lc;
+        ef_eof <= e_eof;
+        ef_runi <= e_runi & e_e;
+        ef_rune <= e_rune;
+        ef_2BleN <= e_2BleN;
+        ef_q <= e_q;
+        ef_rt <= e_rt;
+        ef_err <= e_err;
+        ef_No <= e_No;
+        ef_write_en <= e_write_en;
+    end
+end
+
+always @ (posedge clk)
+    ef_Ao <= Aram[e_q];
+
 
 
 //-------------------------------------------------------------------------------------------------------------------
@@ -492,66 +537,74 @@ reg        [15:0] f_cb;
 reg        [ 4:0] f_cn;    // in range of 0~16
 reg        [ 4:0] f_limit;
 reg  [8:0] f_q;
-reg        f_write_A;
+reg        f_write_en;
 reg [12:0] f_An;
 
+reg  [8:0] g_q;
+reg        g_write_en;
+reg [12:0] g_An;
+always @ (posedge clk)
+    if(~rstn | f_sof)
+        {g_q, g_write_en, g_An} <= '0;
+    else
+        {g_q, g_write_en, g_An} <= {f_q, f_write_en, f_An};
+
+
 always @ (posedge clk) begin
-    f_sof <= e_sof & rstn;
+    f_sof <= ef_sof & rstn;
     f_limit <= P_LIMIT;
-    if(~rstn | e_sof) begin
-        {f_e, f_eof, f_runi, f_rune, f_merr, f_k, f_rc, f_ri, f_on, f_cb, f_cn, f_q, f_write_A, f_An} <= '0;
+    f_An <= P_AINIT;
+    if(~rstn | ef_sof) begin
+        {f_e, f_eof, f_runi, f_rune, f_merr, f_k, f_rc, f_ri, f_on, f_cb, f_cn, f_q, f_write_en} <= '0;
     end else begin
         automatic logic [ 1:0] on = '0;
-        automatic logic [15:0] rc = (e_fc|~e_runi) ? '0 : f_rc;
+        automatic logic [15:0] rc = (ef_fc|~ef_runi) ? '0 : f_rc;
         automatic logic [ 4:0] ri = f_ri;
-        automatic logic [12:0] Ao = (f_write_A & f_q==e_q) ? f_An : Aram[e_q];
+        automatic logic [12:0] Ao = (f_write_en & f_q==ef_q) ? f_An : (g_write_en & g_q==ef_q) ? g_An : ef_Ao;
         automatic logic [ 3:0] k;
-        automatic logic [ 9:0] abserr = e_err<$signed(10'd0) ? $unsigned(-e_err) : $unsigned(e_err);
+        automatic logic [ 9:0] abserr = ef_err<$signed(10'd0) ? $unsigned(-ef_err) : $unsigned(ef_err);
         automatic logic [ 9:0] merr='0, Ainc='0;
         automatic logic        map;
-        {f_write_A, f_An} <= '0;
-        k = func_get_k(Ao, e_No, e_rt);
-        f_cb <= e_fc ? '0 : f_rc;
+        f_write_en <= ef_write_en;
+        k = func_get_k(Ao, ef_No, ef_rt);
+        f_cb <= ef_fc ? '0 : f_rc;
         f_cn <= {1'b0,J[ri]} + 5'd1;
-        if(e_runi) begin
+        if(ef_runi) begin
             rc ++;
             if(rc >= (16'd1<<J[ri])) begin
                 on++;
                 rc -= (16'd1<<J[ri]);
                 if(ri < 5'd31) ri ++;
             end
-            if(e_lc & (rc > 16'd0))
+            if(ef_lc & (rc > 16'd0))
                 on++;
-        end else if(e_rune) begin
+        end else if(ef_rune) begin
             f_limit <= P_LIMIT - 5'd1 - {1'b0,J[ri]};
             if(ri > '0) ri --;
-            map = ~( (e_err=='0) | ( (e_err>$signed(10'd0)) ^ (k==4'd0 & e_2BleN) ) );
-            merr = (abserr<<1) - {9'd0,e_rt} - {9'd0,map};
-            Ainc = ((merr + {9'd0,~e_rt}) >> 1);
+            map = ~( (ef_err=='0) | ( (ef_err>$signed(10'd0)) ^ (k==4'd0 & ef_2BleN) ) );
+            merr = (abserr<<1) - {9'd0,ef_rt} - {9'd0,map};
+            Ainc = ((merr + {9'd0,~ef_rt}) >> 1);
         end else begin
-            map = (~P_LOSSY) & (k==4'd0) & e_2BleN;
-            if(e_err < $signed(10'd0))
+            map = (~P_LOSSY) & (k==4'd0) & ef_2BleN;
+            if(ef_err < $signed(10'd0))
                 merr = (abserr<<1) - 10'd1 - {9'd0,map};
             else
                 merr = (abserr<<1) + {9'd0,map};
-            Ainc = (e_err < $signed(10'd0)) ? $unsigned(-e_err) : $unsigned(e_err);
+            Ainc = (ef_err < $signed(10'd0)) ? $unsigned(-ef_err) : $unsigned(ef_err);
         end
-        if(e_e) begin
-            if(~e_runi) begin
-                f_write_A <= 1'b1;
-                f_An <= A_update(e_No[6], Ao, Ainc);
-            end
+        if(ef_e) begin
             f_rc <= rc;
             f_ri <= ri;
         end
-        f_e <= e_e;
-        f_eof <= e_eof;
-        f_runi <= e_runi & e_e;
-        f_rune <= e_rune;
+        f_An <= A_update(ef_No[6], Ao, Ainc);
+        f_e <= ef_e;
+        f_eof <= ef_eof;
+        f_runi <= ef_runi;
+        f_rune <= ef_rune;
         f_merr <= merr;
         f_k <= k;
         f_on <= on;
-        f_q <= e_q;
+        f_q <= ef_q;
     end
 end
 
@@ -559,13 +612,13 @@ end
 //-------------------------------------------------------------------------------------------------------------------
 // pipeline stage g: write Aram
 //-------------------------------------------------------------------------------------------------------------------
+reg [8:0] A_init_addr;
 always @ (posedge clk)
-    if(~rstn | f_sof) begin
-        Aram <= '{366{P_AINIT}};
-    end else begin
-        if(f_write_A)
-            Aram[f_q] <= f_An;
-    end
+    A_init_addr <= f_sof ? A_init_addr + (A_init_addr < 9'd366 ? 9'd1 : 9'd0) : 9'd0;
+    
+always @ (posedge clk)
+    if(f_sof | f_write_en)
+        Aram[f_write_en ? f_q : A_init_addr] <= f_An;
 
 
 //-------------------------------------------------------------------------------------------------------------------

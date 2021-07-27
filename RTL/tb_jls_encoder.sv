@@ -1,9 +1,12 @@
 `timescale 1ns/1ns
 
-// bubble numbers that insert between pixels
-`define NUM_BUBBLES 0
-
 `define NEAR 1
+
+// bubble numbers that insert between pixels
+//    when = 0, do not insert bubble
+//    when > 0, insert BUBBLE_CONTROL bubbles
+//    when < 0, insert random 0~(-BUBBLE_CONTROL) bubbles
+`define BUBBLE_CONTROL 0
 
 // the input and output file names' format
 `define FILE_NAME_FORMAT  "test%03d"
@@ -92,24 +95,47 @@ endfunction
 //         img : input image array
 //         w   : image width
 //         h   : image height
-//         num_bubbles : bubble numbers that insert between pixels
+//         bubble_control : bubble numbers that insert between pixels
+//              when = 0, do not insert bubble
+//              when > 0, insert bubble_control bubbles
+//              when < 0, insert random 0~bubble_control bubbles
 // -------------------------------------------------------------------------------------------------------------------
-task automatic feed_img(input logic [7:0] img [], input int w, input int h, input int num_bubbles);
-    repeat(13) begin
+task automatic feed_img(input logic [7:0] img [], input int w, input int h, input int bubble_control);
+    int num_bubble;
+    
+    // start feeding a image by assert i_sof for 368 cycles
+    repeat(368) begin
         @(posedge clk)
         i_sof <= 1'b1;
         i_w <= w - 1;
         i_h <= h - 1;
         {i_e, i_x} <= '0;
     end
-    repeat(num_bubbles) @(posedge clk) {i_sof, i_w, i_h, i_e, i_x} <= '0;
-    foreach(img[i]) begin
+    
+    // for all pixels of the image
+    foreach( img[i] ) begin
+        
+        // calculate how many bubbles to insert
+        if(bubble_control<0) begin
+            num_bubble = $random % (1-bubble_control);
+            if(num_bubble<0)
+                num_bubble = -num_bubble;
+        end else begin
+            num_bubble = bubble_control;
+        end
+        
+        // insert bubbles
+        repeat(num_bubble) @(posedge clk) {i_sof, i_w, i_h, i_e, i_x} <= '0;
+        
+        // assert i_e to input a pixel
         @(posedge clk)
         {i_sof, i_w, i_h} <= '0;
         i_e <= 1'b1;
         i_x <= img[i];
-        repeat(num_bubbles) @(posedge clk) {i_sof, i_w, i_h, i_e, i_x} <= '0;
+        
     end
+    
+    // 16 cycles idle between images
     repeat(16) @(posedge clk) {i_sof, i_w, i_h, i_e, i_x} <= '0;
 endtask
 
@@ -133,12 +159,11 @@ jls_encoder #(
 );
 
 
-// file number
-int file_no;
+int file_no;    // file number
 
 
 // -------------------------------------------------------------------------------------------------------------------
-//  read image, feed to jls_encoder_i module 
+//  read images, feed them to jls_encoder_i module 
 // -------------------------------------------------------------------------------------------------------------------
 initial begin
     logic [256*8:1] input_file_name;
@@ -161,7 +186,7 @@ initial begin
         if( w < 5 || w > 16384 || h < 1 || h > 16383 )     // image size not supported
             $display("  *** image size not supported ***");
         else
-            feed_img(img, w, h, `NUM_BUBBLES);
+            feed_img(img, w, h, `BUBBLE_CONTROL);
         
         img.delete();
     end
@@ -173,7 +198,7 @@ end
 
 
 // -------------------------------------------------------------------------------------------------------------------
-//  write output stream to .jls file 
+//  write output stream to .jls files 
 // -------------------------------------------------------------------------------------------------------------------
 logic [256*8:1] output_file_format;
 initial $sformat(output_file_format, "%s\\%s.jls", `OUTPUT_JLS_DIR, `FILE_NAME_FORMAT);
